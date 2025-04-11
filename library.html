@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Document</title>
+	</head>
+	<style>
+		body {
+			margin: 0;
+			font-family: Arial, sans-serif;
+			background-color: #f9f9f9;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			justify-content: center;
+			min-height: 100vh;
+		}
+		.grid {
+			display: grid;
+			grid-template-columns: repeat(3, 400px); /* 3 columnas fijas */
+			gap: 10px;
+			justify-content: center;
+			padding: 20px;
+		}
+
+		.grid img {
+			object-fit: cover;
+			border-radius: 8px;
+			box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+		}
+		#filter-container {
+			margin-bottom: 20px;
+			display: flex;
+			flex-direction: row;
+			align-items: center;
+		}
+		#filter-container label {
+			margin-bottom: 10px;
+			font-size: 18px;
+		}
+		#filter-container select,
+		#filter-container input {
+			width: 100px;
+			margin: 5px;
+			padding: 10px;
+			font-size: 16px;
+			border-radius: 6px;
+			border: 1px solid #ccc;
+		}
+		#filter-container input {
+			width: 400px;
+		}
+		button {
+			margin-bottom: 20px;
+			padding: 10px 20px;
+			font-size: 16px;
+			background-color: #007bff;
+			color: white;
+			border: none;
+			border-radius: 6px;
+			cursor: pointer;
+			transition: background-color 0.3s ease;
+		}
+
+		button:hover {
+			background-color: #0056b3;
+		}
+	</style>
+	<script>
+		const BASE_URL = "https://www.googleapis.com/books/v1/volumes";
+
+		const debounce = (func, delay) => {
+			let timeoutId;
+			return function (...args) {
+				if (timeoutId) {
+					clearTimeout(timeoutId);
+				}
+				timeoutId = setTimeout(() => {
+					func.apply(this, args);
+				}, delay);
+			};
+		};
+		const fetchBooks = async (query, filter) => {
+			const response = await fetch(`${BASE_URL}?q=${filter}:${query}`);
+			const data = await response.json();
+			return data.items || [];
+		};
+		const debounceHandleChange = debounce(async () => {
+			const filter = document.getElementById("select-filter").value;
+			const query = document.getElementById("input-filter").value;
+			if (!query) {
+				const titleSearch = document.getElementById("title-search");
+				titleSearch.innerHTML = "";
+				const bookList = document.getElementById("book-list-items");
+				bookList.innerHTML = "";
+				return;
+			}
+			const titleSearch = document.getElementById("title-search");
+			titleSearch.innerHTML = `Buscando...`;
+			const books = await fetchBooks(query, filter);
+			if (books.length === 0) {
+				titleSearch.innerHTML = `No se encontraron resultados para "${query}"`;
+			} else {
+				titleSearch.innerHTML = `Resultados para "${query}" [${books.length}]`;
+			}
+			const bookList = document.getElementById("book-list-items");
+			bookList.innerHTML = "";
+			books.forEach((book) => {
+				const bookItem = document.createElement("div");
+				bookItem.className = "book-item";
+				bookItem.innerHTML = `
+          <h3>${book.volumeInfo.title}</h3>
+          <p>${book.volumeInfo.authors.join(", ")}</p>
+          <img src="${
+						book.volumeInfo.imageLinks?.thumbnail ||
+						"https://placehold.co/200x200"
+					}" alt="Book Cover" />
+          <p>${book.volumeInfo.description || "No description available."}</p>
+        `;
+				bookList.appendChild(bookItem);
+			});
+		}, 500);
+	</script>
+	<body>
+		<h1>Jocobi Library</h1>
+		<div id="gallery" class="grid"></div>
+		<div id="filter-container">
+			<label for="select-filter">Filtrar por:</label>
+			<select id="select-filter">
+				<option value="inauthor">Autor</option>
+				<option value="intitle">Título</option>
+			</select>
+			<input
+				type="text"
+				id="input-filter"
+				placeholder="Ingrese su búsqueda"
+				oninput="debounceHandleChange()"
+			/>
+		</div>
+		<div id="book-list">
+			<h2 id="title-search"></h2>
+			<div id="book-list-items" class="grid"></div>
+		</div>
+	</body>
+</html>
